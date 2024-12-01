@@ -13,14 +13,13 @@ from model.gpt_model import generate_gpt
 from model.llama_model import generate_llama
 
 
-# Dictionary to track user state
-user_state = {}
-
 class TelegramBot:
     def __init__(self):
         token = os.getenv("TG_BOT_TOKEN")
         self.bot = Bot(token=token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
         self.dp = Dispatcher()
+        # Dictionary to track user state
+        self.user_state = {}
 
         # Register handlers
         self.register_handlers()
@@ -37,7 +36,7 @@ class TelegramBot:
             Returns:
                 None
             """
-            user_state[message.from_user.id] = {"step": "model"}
+            self.user_state[message.from_user.id] = {"step": "model"}
             await ask_model(message)
 
         async def ask_model(message: Message) -> None:
@@ -70,7 +69,7 @@ class TelegramBot:
                 None
             """
             user_id = callback.from_user.id
-            user_state[user_id]["step"] = "type"
+            self.user_state[user_id]["step"] = "type"
 
             keyboard = ReplyKeyboardMarkup(
                 keyboard=[
@@ -92,7 +91,7 @@ class TelegramBot:
                 None
             """
             user_id = message.from_user.id
-            user_state[user_id]["step"] = "character"
+            self.user_state[user_id]["step"] = "character"
 
             keyboard = ReplyKeyboardMarkup(
                 keyboard=[
@@ -115,7 +114,7 @@ class TelegramBot:
             
             """
             user_id = message.from_user.id
-            user_state[user_id]["step"] = "location"
+            self.user_state[user_id]["step"] = "location"
 
             keyboard = ReplyKeyboardMarkup(
                 keyboard=[
@@ -140,9 +139,9 @@ class TelegramBot:
             user_id = callback.from_user.id
             if callback.data.startswith("model_"):
                 # Save the chosen model and move to the next step
-                user_state[callback.from_user.id] = {"step": "model"}
+                self.user_state[callback.from_user.id] = {"step": "model"}
                 chosen_model = callback.data.split("_")[1]
-                user_state[user_id]["model"] = chosen_model
+                self.user_state[user_id]["model"] = chosen_model
                 await callback.message.answer(f"Вы выбрали: {chosen_model}!")
                 await ask_type(callback)
 
@@ -167,18 +166,18 @@ class TelegramBot:
             user_id = message.from_user.id
 
             # If the user state is not initialized, reset
-            if user_id not in user_state or "step" not in user_state[user_id]:
+            if user_id not in self.user_state or "step" not in self.user_state[user_id]:
                 await command_start_handler(message)
                 return
 
-            step = user_state[user_id]["step"]
+            step = self.user_state[user_id]["step"]
 
             if step == "type":
                 # Save the type and move to the next step
                 user_response = message.text.strip()
                 if not input_valid(user_response):
                     user_response = ' '
-                user_state[user_id]["type"] = user_response
+                self.user_state[user_id]["type"] = user_response
                 if user_response != ' ':
                     await message.answer(f"Вы выбрали: {user_response}!")
                 await ask_character(message)
@@ -188,7 +187,7 @@ class TelegramBot:
                 user_response = message.text.strip()
                 if not input_valid(user_response):
                     user_response = ' '
-                user_state[user_id]["character"] = user_response
+                self.user_state[user_id]["character"] = user_response
                 if user_response != ' ':
                     await message.answer(f"Вы выбрали: {user_response}!")
                 await ask_location(message)
@@ -198,19 +197,20 @@ class TelegramBot:
                 user_response = message.text.strip()
                 if not input_valid(user_response):
                     user_response = ' '
-                user_state[user_id]["location"] = user_response
+                self.user_state[user_id]["location"] = user_response
                 if user_response != ' ':
                     await message.answer(f"Вы выбрали: {message.text}!")
                     
                 await message.answer("Генерация анекдота...")
-
-                anecdote = await generate_anecdote(user_state[user_id])
+                
+                self.user_state[user_id]["step"] = "model"
+                anecdote = await generate_anecdote(self.user_state[user_id])
                 await message.answer(f"{anecdote}")
                 # Reset the user state
-                user_state[user_id] = {"step": "model"}
+                self.user_state[user_id] = {"step": "model"}
                 await ask_model(message)
             else:
-                await message.answer("Возникла ошибка, попробуйте позже")
+                pass
                 
         async def generate_anecdote(current_user_state: dict) -> str:
             """

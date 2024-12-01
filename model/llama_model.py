@@ -30,4 +30,4 @@ async def generate_llama(text: str, config='config_llama.json',
             return completion['choices'][0]['message']['content']
         else:
             # Handle the error response
-            return "Error occured" 
+            return "Возникла ошибка, попробуйте позже" 
