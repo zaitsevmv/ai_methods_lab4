@@ -1,0 +1,10 @@
+{
+    "do_sample": true,
+    "max_length": 250,
+    "repetition_penalty": 1.5,
+    "top_k": 5,
+    "top_p": 0.95,
+    "temperature": 0.8,
+    "num_beams": 3,
+    "no_repeat_ngram_size": 7
+}
